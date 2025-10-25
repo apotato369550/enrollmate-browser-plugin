@@ -1,0 +1,65 @@
+﻿//Initialize hub connection
+var connection = $.hubConnection();
+connection.logging = true;
+//Create Hub Proxy from the connection
+var NotificationHub = connection.createHubProxy("NotificationHub");
+var connectionStatus = $("#header_profile_pic");
+
+//These are functions are triggered from the server
+NotificationHub.on('updateUserNotifications', function (data) {
+    document.getElementById('update_notification').click();
+});
+
+//Lifetime events for the connection
+var tryingToReconnect = false;
+
+connection.reconnecting(function () {
+    tryingToReconnect = true;
+    connectionStatus.css("border", "2px solid #fff2b8").prop("title", "Reconnecting to server ...");
+});
+connection.connectionSlow(function () {
+    connectionStatus.css("border", "2px solid #ffe570").prop("title", "Connection is unstable ...");
+});
+connection.reconnected(function () {
+    tryingToReconnect = false;
+    connectionStatus.css("border", "1px solid #c6c6c6").prop("title", "You are now connected to server");
+});
+connection.error(function (err) {
+    connectionStatus.css("border", "2px solid #ffbdbd").prop("title", err);
+});
+connection.disconnected(function () {
+    if (tryingToReconnect) {
+        connectionStatus.css("border", "2px solid #ffbdbd").prop("title", "You are disconnected from the server");
+        connection.stop();
+        setTimeout(function () {
+            ConnectToServer();
+        }, 5000);
+    }
+});
+window.onbeforeunload = function (e) {
+    connection.hub.stop();
+};
+function ConnectToServer() {
+    var success = true;
+
+    connection.start().done(function () {
+        success = true;
+
+        connectionStatus.css("border", "1px solid #c6c6c6").prop("title", "You are now connected to server");
+
+    }).fail(function () {
+        success = false;
+        setTimeout(function () {
+            connectionStatus.css("border", "2px solid #ffbdbd").prop("title", "Can't connect to the server :(");
+        }, 2000);
+        setTimeout(function () {
+            connectionStatus.css("border", "2px solid #ffbdbd").prop("title", "Wait, I'll try again :)");
+        }, 2000);
+        setTimeout(function () {
+            connectionStatus.css("border", "2px solid #ffbdbd").prop("title", "I will now connect you to the server :)");
+        }, 1000);
+    });
+}
+
+//Start your connection
+ConnectToServer();

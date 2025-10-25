@@ -1,0 +1,329 @@
+﻿$(document).on("click", ".rsbd-modal", function (e) {
+    var a = $(this).data("rmodal");
+    var b = $(this).data("rmodallink");
+    var c = $(this).data("rmodalsize");
+    var d = $(this).data("rsbd-target");
+
+    $('#modal5').modal().show();
+    $('#modal5 div').removeClass();
+    $('#modal5 div').addClass("modal-dialog");
+    $('#modal5 div').addClass(c);
+    $.ajax({
+        contentType: 'application/html;charset=utf-8',
+        type: 'GET',
+        url: b + '?iid=' + d,
+        dataType: 'html',
+        beforeSend: function () {
+            $('#modal5Body').html('</br><center><i class="fa fa-spinner fa-spin fa-5x"></i></br>... please wait ...</center></br>');
+        },
+        success: function (content, code) {
+            $('#modal5Body').html(content);
+        },
+        error: function (xhr, status, error) {
+            $('#modal5Body').html('</br><center>' + xhr.responseText + '</center></br>');
+        }
+    })
+    e.preventdefault();
+});
+$(document).on("click", '.rsbd-selectOne', function () {
+    var a = $(this).data('picker-value');
+    var b = $(this).data('picker-target');
+    var d = $(this).data('picker-text');
+
+    var e = $('#' + b).val('');
+
+    var data = [];
+    data.push({
+        Value: a, Text: d
+    });
+    $('#' + b).val(JSON.stringify(data));
+    $('#selectMultiple_' + b).empty();
+    $('#selectMultiple_' + b).append("<label title='click to remove.' class='bg-green rsbd-remove-selected'  data-input-targetId='" + b + "' style='padding-left: 5px;padding-right: 5px;'><i class='fa fa-times'></i> " + d + "</label");
+
+    RSBDPopulateDropdown(b);
+});
+$(document).on("click", ".rsbd-selectMultiple", function (e) {
+    var value = $(this).data('picker-value');
+    var target = $(this).data('picker-target');
+    var text = $(this).data('picker-text');
+    var count = 0;
+    var targetVal = $('#' + target).val();
+
+    if (targetVal === '') {
+        var data = [];
+        data.push({
+            Value: value, Text: text
+        });
+        $('#' + target).val(JSON.stringify(data));
+        $('#selectMultiple_' + target).empty();
+        data.forEach(function (b, index) {
+            $('#selectMultiple_' + target).append("<label title='click to remove.' class='bg-green rsbd-remove-fromlist' data-input-value='" + b.Value + "'  data-input-targetId='" + target + "' style='padding-left: 5px;padding-right: 5px;'><i class='fa fa-times'></i> " + b.Text + "</label");
+        });
+        $(this).remove();
+        //alert('insert for the first time!');
+        count++;
+    } else {
+        var data = JSON.parse(targetVal);
+
+        data.forEach(function (val, index) {
+            if (val.Value === value) {
+                count++;
+            } else {
+
+            }
+        });
+    }
+
+
+    if (count > 0) {
+        //alert(text + ' is already selected!');
+    } else {
+        data.push({
+            Value: value, Text: text
+        });
+        $('#' + target).val(JSON.stringify(data));
+        $('#selectMultiple_' + target).empty();
+        data.forEach(function (b, index) {
+            $('#selectMultiple_' + target).append("<label title='click to remove.' class='bg-green rsbd-remove-fromlist' data-input-value='" + b.Value + "'  data-input-targetId='" + target + "' style='padding-left: 5px;padding-right: 5px;'><i class='fa fa-times'></i> " + b.Text + "</label");
+        });
+        //alert('2nd time insert!');
+        $(this).remove();
+    }
+
+});
+$(document).on("click", ".rsbd-remove-fromlist", function (e) {
+    var value = $(this).data('input-value');
+    var target = $(this).data('input-targetid');
+    var targetVal = $('#' + target).attr("data-display-val");
+    var data = JSON.parse(targetVal);
+    var count = 0;
+
+    //looks for the selected value and delete
+    data.forEach(function (val, index) {
+        if (val !== null && val.Value === value) {
+            delete data[index];
+            $('#' + target).attr("data-display-val", JSON.stringify(data));
+            $('#' + target).val(JSON.stringify(CleanJSONData(data)));
+        }
+    });
+
+    //set field to empty and propagate the remaining values in the json object
+    $('#selectMultiple_' + target).empty();
+    data.forEach(function (b, index) {
+        if (b !== null) {
+            count++;
+            $('#selectMultiple_' + target).append("<label title='click to remove.' class='bg-green rsbd-remove-fromlist' data-input-value='" + b.Value + "'  data-input-targetId='" + target + "' style='padding-left: 5px;padding-right: 5px;'><i class='fa fa-times'></i> " + b.Text + "</label");
+        }
+    });
+
+    //set input field to empty
+    if (count == 0) {
+        $('#' + target).val('');
+        $('#' + target).attr("data-display-val", '');
+    }
+});
+$(document).on("click", '.rsbd-remove-selected', function () {
+    var a = $(this).attr('data-input-targetId');
+    $('#' + a).val("");
+    $(this).remove();
+});
+$(document).on("click", ".rsbd-plus", function (e) {
+    var h = $(this).data("rsbd-c");
+    var a = $(this).data("rsbd-f");
+    var b = $(this).data("rsbd-ftc");
+    var target = $(this).data("rsbd-target");
+    var g = $("#" + target).attr("data-display-val");
+
+    if (h === 1) {
+        if (g !== '') {
+            var data = JSON.parse(g);
+        } else {
+            var data = [];
+        }
+
+
+        //Gets the values of each specified fields
+        var c = a.split(",");
+        var item = {};
+
+        c.forEach(function (val, index) {
+            var v = "";
+            var d = "";
+
+            if ($("#" + val).is(":checkbox")) {
+                if ($("#" + val).is(":checked")) {
+                    v = true;
+                    d = true;
+                } else {
+                    v = false;
+                    d = false;
+                }
+            } else if ($("#" + val).is("select")) {
+                v = $("#" + val + " option:selected").val();
+                d = $("#" + val + " option:selected").text();
+            } else if ($("#" + val).val().startsWith('[{')) {
+                jo = JSON.parse($("#" + val).val());
+                v = jo[0].Value;
+                d = jo[0].Text;
+            } else {
+                v = $("#" + val).val();
+                d = $("#" + val).val();
+            }
+
+            item["" + val] = v;
+            item["_" + val] = d;
+        });
+
+        data.push(item);
+        $("#" + target).attr("data-display-val", JSON.stringify(data));
+        $("#" + target).val(JSON.stringify(CleanJSONData(data)));
+        
+        
+        UpdateButtonDataField(target, "fromjlist");
+
+        //Clears specified fields
+        var d = b.split(",");
+        d.forEach(function (val, index) {
+            $("#" + val).val('');
+            $("#section_" + val).hide();
+            $("#selectMultiple_" + val).empty();
+        });
+
+        $(this).empty();
+        $(this).append("<i class='fa fa-plus green' style='color:#134d0f'></i>");
+        $(this).data("rsbd-c", 0);
+
+        $("#" + target).valid();
+    } else {
+        var d = b.split(",");
+        d.forEach(function (val, index) {
+            $("#" + val).val('');
+            $("#section_" + val).show();
+        });
+
+        $(this).empty();
+        $(this).append("<i class='fa fa-plus-circle' style='color:#134d0f'></i>");
+        $(this).data("rsbd-c", 1);
+    }
+
+
+
+    e.stopImmediatePropagation();
+    return false;
+})
+$(document).on("click", ".rsbd-remove-fromjlist", function (e) {
+    var value = $(this).data('input-value');
+    var target = $(this).data('input-targetid');
+    var targetVal = $('#' + target).attr("data-display-val");
+    var d = JSON.parse(targetVal);
+    //looks for the selected value and delete
+    d.forEach(function (val, index) {
+        if (val !== null && index === value) {
+            delete d[index];
+            //update field's value the updated json object without null values.
+
+            $('#' + target).attr("data-display-val", JSON.stringify(d).replace(",null", "").replace("[null]", ""));
+            $('#' + target).val(JSON.stringify(CleanJSONData(d)).replace(",null", "").replace("[null]", ""));
+        }
+    });
+
+    //set field to empty and propagate the remaining values in the json object
+    UpdateButtonDataField(target, "fromjlist");
+
+
+    //set input field to default text when target field is null or empty.
+    if ($('#' + target).attr("data-display-val").length === '' || $('#' + target).attr("data-display-val") === null) {
+        $('#selectMultiple_' + target).text("please click/tap 'plus' button to add.");
+    }
+
+    $("#" + target).valid();
+    e.stopImmediatePropagation();
+    return false;
+});
+function UpdateButtonDataField(targetId, classId) {
+    $('#selectMultiple_' + targetId).empty();
+    var fieldToHide = $('#' + targetId).data('rsbd-fth');
+    var newval = $('#' + targetId).attr('data-display-val');
+    if (newval !== null && newval !== '') {
+        var data = JSON.parse(newval);
+
+        for (var obj in data) {
+            var t = "";
+            if (obj !== null) {
+                if (data.hasOwnProperty(obj)) {
+                    for (var prop in data[obj]) {
+                        if (data[obj].hasOwnProperty(prop)) {
+                            if ((prop.toString() !== fieldToHide.toString()) && prop.toString().match("^_")) {
+                                if (prop.toString() !== "Value") {
+                                    t += prop.replace("_", "") + ' : ' + data[obj][prop] + '<br/>';
+                                } else {
+                                    t += data[obj][prop] + '<br/>';
+                                }
+                            }
+                        }
+                    }
+                }
+                if (t.length !== 0) {
+                    $('#selectMultiple_' + targetId).append("<label title='click to remove.' class='bg-green rsbd-remove-" + classId + "' data-input-value='" + obj + "'  data-input-targetId='" + targetId + "' style='padding: 10px;margin-right:2px;border-radius:5px'>" + t + "</label");
+                }
+            }
+        }
+    }
+}
+function RSBDPopulateDropdown(targetId) {
+    var targetFieldId = $('#' + targetId).data("rsbd-tf");
+    var url = $('#' + targetId).data("rsbd-tfurl");
+    if (targetFieldId !== null) {
+        var c = "Label_" + targetFieldId;
+        var d = $('#' + targetId).val();
+        var e = $("#" + c).text();
+        $.ajax({
+            contentType: 'application/html;charset=utf-8',
+            type: 'GET',
+            url: url,
+            data: { id: d },
+            dataType: 'html',
+            beforeSend: function () {
+                $('#' + c).html('<i class="fa fa-spinner fa-spin"></i> loading...');
+            },
+            success: function (content) {
+                $('#' + targetFieldId).empty();
+                $('#' + targetFieldId).append(new Option("please select...", null));
+                //$.each(content, function (i, item) {
+                //    $('#' + targetFieldId).append($('<option>', {
+                //        value: item.Value,
+                //        text: item.Text
+                //    }));
+                //});
+                var dd = JSON.parse(content);
+                dd.forEach(function (val, index) {
+                    $('#' + targetFieldId).append($('<option>', {
+                        value: val.Value,
+                        text: val.Text
+                    }));
+                });
+                //$('#' + targetFieldId).html(content);
+                $('#' + c).text(e);
+                //$('#' + c).html(e);
+            },
+            error: function (xhr, status, error) {
+                alert(xhr.responseText);
+            }
+        })
+        return false;
+    }
+}
+function CleanJSONData(data) {
+    for (var i in data) {
+        if (i !== null) {
+            if (data.hasOwnProperty(i)) {
+                for (var prop in data[i]) {
+                    if (prop.toString().match("^_")) {
+                        delete data[i][prop.toString()];
+                    }
+                }
+            }
+        }
+    }
+    return data;
+}

@@ -1,0 +1,32 @@
+﻿jQuery(document).ready(function () {
+    Metronic.init();
+    Layout.init();
+    Demo.init();
+});
+rsModal.init();
+
+$('.page-content').css('min-height', ($(window).height()) - 417);
+$(window).resize(function () {
+    $('.page-content').css('min-height', ($(window).height()) - 417);
+});
+
+$(".rs-ajax-silent-load").each(function (event) {
+    var url = $(this).data("ajax-href");
+    var target = $(this).data("ajax-target");
+    $.ajax({
+        contentType: 'application/html;charset=utf-8',
+        type: 'GET',
+        url: url,
+        dataType: 'html',
+        success: function (content, code) {
+            $(target).html(content);
+        },
+        error: function (xhr, status, error) {
+            $(target).html('</br><center>' + xhr.responseText + '</center></br>');
+        }
+    })
+});
+
+$(".click-onload").each(function () {
+    $(this).click();
+});
