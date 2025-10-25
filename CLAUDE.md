@@ -1,0 +1,1 @@
+Example data to be scraped can be found in /example_data
