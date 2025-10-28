@@ -48,11 +48,21 @@ class PopupApp {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
+      console.log('[EnrollMate Popup] Sending SCRAPE_COURSES message to tab', tab.id);
+
       const response = await chrome.tabs.sendMessage(tab.id, {
         action: 'SCRAPE_COURSES'
       });
 
+      console.log('[EnrollMate Popup] Received response:', response);
+
       if (response.success) {
+        console.log('[EnrollMate Popup] ✅ Extraction successful!');
+        console.log('[EnrollMate Popup] Courses found:', response.courses);
+        console.log('[EnrollMate Popup] Course count:', response.courseCount);
+        console.log('[EnrollMate Popup] Page type:', response.pageType);
+        console.table(response.courses);
+
         this.setState({
           courses: response.courses,
           courseCount: response.courses.length,
@@ -60,6 +70,7 @@ class PopupApp {
           loading: false
         });
       } else {
+        console.error('[EnrollMate Popup] ❌ Extraction failed:', response.error);
         this.setState({
           error: `Failed to extract: ${response.error}`,
           step: 'error',
@@ -67,6 +78,7 @@ class PopupApp {
         });
       }
     } catch (err) {
+      console.error('[EnrollMate Popup] ❌ Error during extraction:', err);
       this.setState({
         error: `Error: ${err.message}`,
         step: 'error',

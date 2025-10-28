@@ -7,7 +7,7 @@
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "assets/icon-placeholder.svg",
+    "default_icon": "assets/icon-enrollmate.png",
     "default_title": "EnrollMate - Extract Courses"
   },
   "background": {

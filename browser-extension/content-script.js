@@ -3,11 +3,43 @@
  * Runs on the page and extracts course data from DOM
  */
 
+// Enable debug logging
+const DEBUG = true;
+
+function log(...args) {
+  if (DEBUG) {
+    console.log('[EnrollMate]', ...args);
+  }
+}
+
+function logError(...args) {
+  console.error('[EnrollMate ERROR]', ...args);
+}
+
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'SCRAPE_COURSES') {
     try {
+      log('🔍 Starting course extraction...');
       const result = scrapeCoursesFromPage();
+
+      log('✅ Extraction complete!');
+      log(`📊 Found ${result.courseCount} courses (Page type: ${result.pageType})`);
+
+      if (result.courses.length > 0) {
+        log('📋 Extracted courses:');
+        result.courses.forEach((course, idx) => {
+          log(`  ${idx + 1}. ${course.courseCode} - ${course.courseName} (Section ${course.sectionGroup})`);
+          log(`     Schedule: ${course.schedule}`);
+          log(`     Enrollment: ${course.enrolledCurrent}/${course.enrolledTotal} (${course.status})`);
+          if (course.instructor) log(`     Instructor: ${course.instructor}`);
+          if (course.room) log(`     Room: ${course.room}`);
+        });
+        log('📦 Full course data:', result.courses);
+      } else {
+        log('⚠️ No courses found on this page');
+      }
+
       sendResponse({
         success: true,
         courses: result.courses,
@@ -16,6 +48,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         courseCount: result.courseCount
       });
     } catch (error) {
+      logError('Failed to scrape courses:', error);
       sendResponse({
         success: false,
         error: error.message
@@ -28,28 +61,40 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * Main function to scrape courses from the page
  */
 function scrapeCoursesFromPage() {
+  log('  Detecting page type...');
   // Try to detect page type and use appropriate scraper
   const detectedType = detectPageType();
+  log(`  Page type detected: ${detectedType}`);
 
   let courses = [];
 
   if (detectedType === 'canvas') {
+    log('  Using Canvas layout scraper...');
     courses = scrapeCanvasLayout();
   } else if (detectedType === 'banner') {
+    log('  Using Banner layout scraper...');
     courses = scrapeBannerLayout();
   } else if (detectedType === 'generic-table') {
+    log('  Using Generic table layout scraper...');
     courses = scrapeGenericTableLayout();
   } else {
+    log('  Using Generic layout scraper...');
     courses = scrapeGenericLayout();
   }
 
+  log(`  Found ${courses.length} raw courses before validation`);
+
   // Validate and clean courses
+  const beforeValidation = courses.length;
   courses = courses
     .map(course => validateCourse(course))
     .filter(course => course !== null);
+  log(`  ${beforeValidation} → ${courses.length} courses after validation`);
 
   // Remove duplicates
+  const beforeDedup = courses.length;
   courses = removeDuplicates(courses);
+  log(`  ${beforeDedup} → ${courses.length} courses after deduplication`);
 
   return {
     courses,
@@ -64,24 +109,28 @@ function scrapeCoursesFromPage() {
  */
 function detectPageType() {
   const url = window.location.href;
-  const html = document.documentElement.innerHTML;
+  log(`  URL: ${url}`);
 
   // Check for Canvas
-  if (url.includes('instructure.com') || html.includes('canvas')) {
+  if (url.includes('instructure.com') || document.documentElement.innerHTML.includes('canvas')) {
+    log('  ✓ Canvas system detected');
     return 'canvas';
   }
 
   // Check for Banner
-  if (url.includes('banner') || html.includes('banner-course')) {
+  if (url.includes('banner') || document.documentElement.innerHTML.includes('banner-course')) {
+    log('  ✓ Banner system detected');
     return 'banner';
   }
 
   // Check for generic table layout
   const tables = document.querySelectorAll('table');
   if (tables.length > 0) {
+    log(`  ✓ ${tables.length} HTML table(s) found - using generic-table scraper`);
     return 'generic-table';
   }
 
+  log('  ℹ No specific system detected - using generic scraper');
   return 'generic';
 }
 
@@ -125,12 +174,16 @@ function scrapeBannerLayout() {
 function scrapeGenericTableLayout() {
   const courses = [];
   const tables = document.querySelectorAll('table');
+  log(`    Processing ${tables.length} table(s)...`);
 
-  tables.forEach(table => {
+  tables.forEach((table, tableIdx) => {
     const rows = table.querySelectorAll('tbody tr, tr');
-    rows.forEach(row => {
+    log(`    Table ${tableIdx + 1}: ${rows.length} row(s)`);
+
+    rows.forEach((row, rowIdx) => {
       const courseData = extractCourseFromTableRow(row);
       if (courseData) {
+        log(`      ✓ Row ${rowIdx + 1}: Extracted ${courseData.courseCode}`);
         courses.push(courseData);
       }
     });
