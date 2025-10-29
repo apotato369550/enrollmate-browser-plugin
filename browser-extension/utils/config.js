@@ -2,9 +2,23 @@
  * Configuration constants for EnrollMate Browser Extension
  */
 
+// ============================================================================
+// TEST MODE CONFIGURATION
+// ============================================================================
+// Set to true for testing without live API endpoints or when testing locally
+// Set to false for production use with real backend
+export const TEST_MODE = true; // ← Change to false when backend is ready
+
+// When TEST_MODE is true:
+// - Uses mock data for course extraction (no actual scraping)
+// - Skips real API calls for authentication
+// - Uses sample semesters instead of fetching from backend
+// - Allows testing on any page without content script restrictions
+
 // API Configuration
-// TODO: Replace with actual EnrollMate API URL
-export const ENROLLMATE_API_URL = 'https://enrollmate.com';
+export const ENROLLMATE_API_URL = TEST_MODE
+  ? 'http://localhost:3000' // Local development
+  : 'https://enrollmate.com'; // Production
 
 // Supabase Configuration (if using Supabase for auth)
 // TODO: Add Supabase credentials if needed

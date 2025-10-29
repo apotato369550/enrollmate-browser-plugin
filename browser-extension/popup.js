@@ -1,6 +1,47 @@
 // Simple popup app without React (for compatibility)
 // This will be the basic implementation that can later be refactored to use React
 
+// Import TEST_MODE from config (note: this won't work directly in popup.js without a build tool)
+// So we'll check for it via a dynamic import or inline it
+const TEST_MODE = false; // Set to false for production - matches utils/config.js
+
+// Mock data for testing
+const MOCK_COURSES = [
+  {
+    courseCode: "CIS 1101",
+    courseName: "Introduction to Computing Concepts",
+    sectionGroup: 1,
+    schedule: "MWF 01:30 PM - 03:30 PM",
+    enrolledCurrent: 25,
+    enrolledTotal: 30,
+    instructor: "Dr. Smith",
+    room: "LB201",
+    status: "OK"
+  },
+  {
+    courseCode: "CIS 1102",
+    courseName: "Data Structures",
+    sectionGroup: 1,
+    schedule: "TuTh 09:00 AM - 10:30 AM",
+    enrolledCurrent: 30,
+    enrolledTotal: 30,
+    instructor: "Dr. Johnson",
+    room: "LB202",
+    status: "FULL"
+  },
+  {
+    courseCode: "CIS 2103",
+    courseName: "Database Systems",
+    sectionGroup: 1,
+    schedule: "MWF 10:00 AM - 11:00 AM",
+    enrolledCurrent: 15,
+    enrolledTotal: 30,
+    instructor: "Prof. Williams",
+    room: "LB301",
+    status: "OK"
+  }
+];
+
 class PopupApp {
   constructor() {
     this.state = {
@@ -45,18 +86,56 @@ class PopupApp {
   async handleExtractCourses() {
     this.setState({ step: 'extracting', loading: true });
 
+    // TEST MODE: Use mock data instead of actual scraping
+    if (TEST_MODE) {
+      console.log('[EnrollMate Popup] 🧪 TEST MODE ENABLED - Using mock data');
+      console.log('[EnrollMate Popup] Courses found:', MOCK_COURSES);
+      console.log('[EnrollMate Popup] Course count:', MOCK_COURSES.length);
+      console.table(MOCK_COURSES);
+
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      this.setState({
+        courses: MOCK_COURSES,
+        courseCount: MOCK_COURSES.length,
+        step: 'preview',
+        loading: false
+      });
+      return;
+    }
+
+    // PRODUCTION MODE: Actual scraping
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
       console.log('[EnrollMate Popup] Sending SCRAPE_COURSES message to tab', tab.id);
+      console.log('[EnrollMate Popup] Tab URL:', tab.url);
 
+      // Check if content script can run on this page
+      if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+        throw new Error('Cannot extract courses from Chrome internal pages. Please navigate to a course registration page.');
+      }
+
+      // Try to inject content script if not already present
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content-script.js']
+        });
+        console.log('[EnrollMate Popup] Content script injected successfully');
+      } catch (injectErr) {
+        console.log('[EnrollMate Popup] Content script might already be loaded:', injectErr.message);
+      }
+
+      // Send message to content script
       const response = await chrome.tabs.sendMessage(tab.id, {
         action: 'SCRAPE_COURSES'
       });
 
       console.log('[EnrollMate Popup] Received response:', response);
 
-      if (response.success) {
+      if (response && response.success) {
         console.log('[EnrollMate Popup] ✅ Extraction successful!');
         console.log('[EnrollMate Popup] Courses found:', response.courses);
         console.log('[EnrollMate Popup] Course count:', response.courseCount);
@@ -70,17 +149,32 @@ class PopupApp {
           loading: false
         });
       } else {
-        console.error('[EnrollMate Popup] ❌ Extraction failed:', response.error);
+        console.error('[EnrollMate Popup] ❌ Extraction failed:', response?.error);
         this.setState({
-          error: `Failed to extract: ${response.error}`,
+          error: `Failed to extract: ${response?.error || 'Unknown error'}`,
           step: 'error',
           loading: false
         });
       }
     } catch (err) {
       console.error('[EnrollMate Popup] ❌ Error during extraction:', err);
+
+      let errorMessage = err.message;
+
+      // Provide helpful error messages
+      if (err.message.includes('Receiving end does not exist')) {
+        errorMessage = 'Could not connect to the page. This can happen if:\n\n' +
+          '1. You\'re on a Chrome internal page (chrome://, chrome-extension://)\n' +
+          '2. You\'re on a restricted page (Chrome Web Store, Gmail)\n' +
+          '3. The page just loaded and content script isn\'t ready\n\n' +
+          'Solutions:\n' +
+          '- Navigate to a course registration page\n' +
+          '- Refresh the page and try again\n' +
+          '- Or enable TEST_MODE in popup.js to test with mock data';
+      }
+
       this.setState({
-        error: `Error: ${err.message}`,
+        error: errorMessage,
         step: 'error',
         loading: false
       });
