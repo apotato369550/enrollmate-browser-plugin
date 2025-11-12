@@ -4,7 +4,7 @@
  */
 
 // Configuration constants
-const ENROLLMATE_API_URL = 'https://enrollmate.com'; // TODO: Update with actual EnrollMate API URL
+const ENROLLMATE_API_URL = 'http://localhost:3000'; // For local development (change to production URL when deploying)
 const TIMEOUTS = {
   FETCH_DEFAULT: 30000,
   AUTH: 10000,
